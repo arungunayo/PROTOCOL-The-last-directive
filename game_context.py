@@ -1,3 +1,5 @@
+from ai_manager import ProtocolAI
+
 class GameContext:
     def __init__(self):
         self.flags = {
@@ -14,3 +16,6 @@ class GameContext:
         self.behavior = {
             "fast_learner": False
         }
+        
+        # Initialize AI globally
+        self.ai = ProtocolAI()

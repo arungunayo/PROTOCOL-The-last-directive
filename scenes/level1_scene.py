@@ -6,14 +6,14 @@ from settings import *
 from player import Player
 from sprite import Sprite, Decoration, CollisionSprite
 from fade import Fade
-# from scenes.boot_scene import BootScene
-
+from ai_ui import DialogueBox
+import threading
 
 class Level1Scene:
     def __init__(self, manager, context):
         print("LEVEL 1 LOADED")
         self.manager = manager
-        self.context = context
+        self.context = context  # Access AI via self.context.ai
 
         self.display_surface = pygame.display.get_surface()
         self.camera_offset = pygame.Vector2(0, 0)
@@ -33,8 +33,28 @@ class Level1Scene:
         # state
         self.fade = Fade((WINDOW_WIDTH, WINDOW_HEIGHT))
         self.exiting = False
+        
+        # UI
+        self.ui = DialogueBox()
 
         self.setup()
+        
+        # Trigger Briefing
+        self.trigger_ai_response(self.context.ai.generate_mission_briefing, "Sector 4 - Identifying Anomalies")
+
+    def trigger_ai_response(self, func, *args):
+        """Helper to run AI calls in a separate thread."""
+        def wrapper():
+            response = func(*args)
+            
+            # Handle Structured Mission Briefing (Dict)
+            if isinstance(response, dict):
+                msg = f">> MISSION BRIEFING <<\n\nOBJECTIVE: {response.get('surface_objective')}\n\n[HIDDEN PARAMETER]: {response.get('hidden_evaluation')}"
+                self.ui.show_message(msg)
+            else:
+                self.ui.show_message(response)
+        
+        threading.Thread(target=wrapper, daemon=True).start()
 
     # =========================
     # MAP SETUP (UNCHANGED LOGIC)
@@ -86,18 +106,32 @@ class Level1Scene:
     # =========================
     # INPUT
     # =========================
+    # =========================
+    # INPUT
+    # =========================
     def handle_event(self, event):
         if event.type == pygame.KEYDOWN:
             # TEMP EXIT CONDITION (replace with cache objective later)
             if event.key == pygame.K_RETURN:
                 self.fade.start()
                 self.exiting = True
+            
+            # AI Testing Keys
+            elif event.key == pygame.K_t:
+                self.trigger_ai_response(self.context.ai.analyze_action, "Player inspected a broken drone.", "Curiosity expressed.")
+            
+            elif event.key == pygame.K_e:
+                self.trigger_ai_response(self.context.ai.generate_terminal_log, "Server Room")
+                
+            elif event.key == pygame.K_q:
+                self.trigger_ai_response(self.context.ai.generate_end_report)
 
     # =========================
     # UPDATE
     # =========================
     def update(self, dt):
         self.all_sprites.update(dt)
+        self.ui.update()
 
         # camera follow
         self.camera_offset.x = (
@@ -108,7 +142,6 @@ class Level1Scene:
         )
 
         # exit transition
-        from scenes.boot_scene import BootScene
         if self.exiting and self.fade.update():
             from scenes.boot_scene import BootScene
             self.manager.change_state(
@@ -133,5 +166,8 @@ class Level1Scene:
         #     rect = sprite.rect.copy()
         #     rect.topleft -= self.camera_offset
         #     pygame.draw.rect(screen, "red", rect, 2)
+            
+        # Draw UI
+        self.ui.draw(screen)
 
         self.fade.draw(screen)

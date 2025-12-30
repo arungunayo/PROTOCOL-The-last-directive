@@ -5,8 +5,8 @@ import logging
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 
-# Load .env from parent directory (since script runs in 'code/')
-env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
+# Load .env from same directory
+env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
 if os.path.exists(env_path):
     load_dotenv(env_path)
     print(f"DEBUG: Loaded .env from {env_path}")

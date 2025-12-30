@@ -5,9 +5,10 @@ import pytmx
 
 from settings import *
 from player import Player
-from sprite import CollisionSprite
-from ui.dialogue import DialogueBox
+from sprite import Sprite, Decoration, CollisionSprite
 from fade import Fade
+from ai_ui import DialogueBox
+import threading
 
 
 class Level4Scene:
@@ -17,16 +18,47 @@ class Level4Scene:
         self.manager = manager
         self.context = context
         self.display_surface = pygame.display.get_surface()
+        self.camera_offset = pygame.Vector2(0, 0)
         self.font = pygame.font.SysFont("consolas", 18)
 
+        # groups
         self.all_sprites = pygame.sprite.Group()
         self.collision_sprites = pygame.sprite.Group()
 
+        # background
+        self.bg = pygame.image.load(
+            join(ASSETS_DIR, "Graphics", "bg", "bg.png")
+        ).convert()
+        self.bg = pygame.transform.scale(
+            self.bg, (WINDOW_WIDTH, WINDOW_HEIGHT)
+        )
+
+        # state
         self.fade = Fade((WINDOW_WIDTH, WINDOW_HEIGHT))
         self.exiting = False
-        self.dialogue = None
         self.decision_made = False
 
+        # UI
+        self.ui = DialogueBox()
+
+        self.setup()
+        
+        # Trigger Briefing
+        self.trigger_ai_response(self.context.ai.generate_mission_briefing, "The Core - Final Judgment")
+
+    def trigger_ai_response(self, func, *args):
+        """Helper to run AI calls in a separate thread."""
+        def wrapper():
+            response = func(*args)
+            if isinstance(response, dict):
+                msg = f">> FINAL JUDGMENT <<\n\nOBJECTIVE: {response.get('surface_objective')}\n\n[PROTOCOL STATUS]: {response.get('hidden_evaluation')}"
+                self.ui.show_message(msg)
+            else:
+                self.ui.show_message(response)
+        
+        threading.Thread(target=wrapper, daemon=True).start()
+
+    def setup(self):
         self.bias = self.context.flags.get("level2_choice")  # survivor / data
 
         self.load_map()
@@ -88,20 +120,35 @@ class Level4Scene:
 
         self.dialogue = DialogueBox(lines, self.font)
 
-    # =====================
+    # =========================
     # INPUT
-    # =====================
+    # =========================
     def handle_event(self, event):
         if self.dialogue:
             self.dialogue.handle_event(event)
             return
 
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_i:
-            if self.player.hitbox.colliderect(self.grant_rect):
-                self.choose_grant()
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_RETURN:
+                self.fade.start()
+                self.exiting = True
+                
+            # AI Testing Keys
+            elif event.key == pygame.K_t:
+                self.trigger_ai_response(self.context.ai.analyze_action, "Player reached the Core.", "Final determination pending.")
+            
+            elif event.key == pygame.K_e:
+                self.trigger_ai_response(self.context.ai.generate_terminal_log, "The Core")
+                
+            elif event.key == pygame.K_q:
+                self.trigger_ai_response(self.context.ai.generate_end_report)
+            
+            elif event.key == pygame.K_i:
+                if self.player.hitbox.colliderect(self.grant_rect):
+                    self.choose_grant()
 
-            elif self.player.hitbox.colliderect(self.shutdown_rect):
-                self.choose_shutdown()
+                elif self.player.hitbox.colliderect(self.shutdown_rect):
+                    self.choose_shutdown()
 
     # =====================
     # DECISIONS
@@ -135,41 +182,43 @@ class Level4Scene:
             self.font
         )
 
-    # =====================
+    # =========================
     # UPDATE
-    # =====================
+    # =========================
     def update(self, dt):
         self.all_sprites.update(dt)
+        self.ui.update()
 
-        if self.dialogue:
-            self.dialogue.update()
-            if self.dialogue.finished and not self.exiting:
-                self.fade.start()
-                self.exiting = True
+        # camera follow
+        self.camera_offset.x = (
+            self.player.rect.centerx - WINDOW_WIDTH // 2
+        )
+        self.camera_offset.y = (
+            self.player.rect.centery - WINDOW_HEIGHT // 2
+        )
 
+        # exit transition
         if self.exiting and self.fade.update():
-            from scenes.ending_scene import EndingScene
+            from scenes.boot_scene import BootScene
             self.manager.change_state(
-                EndingScene(self.manager, self.context)
+                BootScene(self.manager, self.context)
             )
 
-    # =====================
+    # =========================
     # DRAW
-    # =====================
+    # =========================
     def draw(self, screen):
-        screen.fill((5, 5, 10))
+        # background
+        screen.blit(self.bg, (0, 0))
 
-        for layer in self.tmx.visible_layers:
-            if isinstance(layer, pytmx.TiledTileLayer):
-                for x, y, gid in layer:
-                    tile = self.tmx.get_tile_image_by_gid(gid)
-                    if tile:
-                        screen.blit(
-                            tile,
-                            (x * self.tmx.tilewidth, y * self.tmx.tileheight)
-                        )
-
-        self.all_sprites.draw(screen)
+        # world
+        for sprite in self.all_sprites:
+            offset_rect = sprite.rect.copy()
+            offset_rect.topleft -= self.camera_offset
+            screen.blit(sprite.image, offset_rect)
+            
+        self.ui.draw(screen)
+        self.fade.draw(screen)
 
         # DEBUG TERMINALS (remove later)
         # pygame.draw.rect(screen, "green", self.grant_rect, 2)
