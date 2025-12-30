@@ -1,0 +1,5 @@
+pygame-ce
+langchain
+pytmx
+langchain-groq
+python-dotenv
