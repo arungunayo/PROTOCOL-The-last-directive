@@ -149,6 +149,12 @@ class Level4Scene:
 
                 elif self.player.hitbox.colliderect(self.shutdown_rect):
                     self.choose_shutdown()
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_F1:
+                from flow import Flow
+                self.manager.change_state(
+                    Flow.next("boot", self.manager, self.context)
+                )
 
     # =====================
     # DECISIONS

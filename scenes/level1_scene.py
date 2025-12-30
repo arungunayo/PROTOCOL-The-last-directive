@@ -125,6 +125,12 @@ class Level1Scene:
                 
             elif event.key == pygame.K_q:
                 self.trigger_ai_response(self.context.ai.generate_end_report)
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_F1:
+                    from flow import Flow
+                    self.manager.change_state(
+                        Flow.next("boot", self.manager, self.context)
+                    )
 
     # =========================
     # UPDATE

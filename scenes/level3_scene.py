@@ -161,6 +161,12 @@ class Level3Scene:
                 elif self.branch == "data":
                     if self.player.hitbox.colliderect(self.node_rect):
                         self.finish_level("logic")
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_F1:
+                    from flow import Flow
+                    self.manager.change_state(
+                        Flow.next("boot", self.manager, self.context)
+                    )
 
     # =========================
     # UPDATE

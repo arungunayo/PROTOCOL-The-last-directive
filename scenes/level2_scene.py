@@ -115,6 +115,12 @@ class Level2Scene:
 
                 elif self.player.hitbox.colliderect(self.data_rect):
                     self.resolve_choice("data")
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_F1:
+                from flow import Flow
+                self.manager.change_state(
+                    Flow.next("boot", self.manager, self.context)
+                )
 
     # ------------------
     def resolve_choice(self, choice):
