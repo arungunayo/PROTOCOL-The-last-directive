@@ -164,8 +164,15 @@ class BootScene:
         # Auto-exit if interacted and text is fully shown (simple time check or just wait for key)
         if self.interacted and not self.exiting:
             # Let the player read for 3 seconds then fade (or wait for key press)
-            # For now, let's just wait for a keypress in handle_event to trigger fade
             pass
+            
+        # DEBUG PRINT
+        if pygame.time.get_ticks() % 100 == 0:
+             print(f"DEBUG: Player Pos: {self.player.rect.topleft}, Hitbox: {self.player.hitbox.topleft}")
+             if not self.terminal_rect:
+                 print("DEBUG: Terminal Rect is NONE")
+             else:
+                 print(f"DEBUG: Terminal Rect: {self.terminal_rect}")
 
         if self.exiting and self.fade.update():
             from scenes.level1_scene import Level1Scene
@@ -200,6 +207,12 @@ class BootScene:
              pygame.draw.rect(screen, "green", self.terminal_rect, 2)
 
         self.ui.draw(screen)
+
+        # FORCE DEBUG DRAW
+        if self.player:
+            pygame.draw.rect(screen, "red", self.player.rect, 2)
+        if self.terminal_rect:
+            pygame.draw.rect(screen, "green", self.terminal_rect, 2)
 
         self.fade.draw(screen)
 
