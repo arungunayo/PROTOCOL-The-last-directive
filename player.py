@@ -6,7 +6,7 @@ GRAVITY = 2500
 JUMP_FORCE = -700
 MOVE_SPEED = 500
 ANIMATION_SPEED = 30
-SCALE = 2.5
+SCALE = 3
 
 
 class Player(pygame.sprite.Sprite):
@@ -14,6 +14,7 @@ class Player(pygame.sprite.Sprite):
         super().__init__(groups)
 
         self.collision_sprites = collision_sprites
+        self.flash_timer = 0
 
         # animations
         self.animations = self.load_animations()
@@ -25,7 +26,9 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(topleft=pos)
 
         # hitbox
-        self.hitbox = self.rect.inflate(-20, 0)
+        self.hitbox = self.rect.copy()
+        self.hitbox.top +=60
+        self.hitbox.width = int(self.rect.width * 0.4)
         self.prev_hitbox = self.hitbox.copy()
 
         # movement
@@ -37,7 +40,7 @@ class Player(pygame.sprite.Sprite):
 
     def load_animations(self):
         animations = {}
-        base_path = join("..", "assets", "images", "player")
+        base_path = join("", "assets", "images", "player")
 
         for state in ["idle", "left", "right"]:
             for direction in ["l", "r"]:
@@ -110,7 +113,7 @@ class Player(pygame.sprite.Sprite):
     # ------------------ ANIMATION ------------------
     def load_animations(self):
         animations = {}
-        base = join("..", "assets", "images", "player")
+        base = join("", "assets", "images", "player")
 
         animations["idle-left"] = self.load_folder(join(base, "idle-l"))
         animations["idle-right"] = self.load_folder(join(base, "idle-r"))
@@ -142,6 +145,14 @@ class Player(pygame.sprite.Sprite):
 
         self.image = self.animations[key][int(self.frame_index)]
         self.rect.center = self.hitbox.center
+        if self.flash_timer > 0:
+            img = self.image.copy()
+            img.fill((255, 255, 255), special_flags=pygame.BLEND_RGB_ADD)
+            self.image = img
+
+    # ------------------ flash ------------------
+    def flash(self, duration=250):
+        self.flash_timer = duration
 
     # ------------------ UPDATE ------------------
 
@@ -152,7 +163,7 @@ class Player(pygame.sprite.Sprite):
 
         self.move_horizontal(dt)
         self.collisions("horizontal")
-
+        self.flash_timer = max(0, self.flash_timer - dt * 1000)
         self.apply_gravity(dt)
         self.collisions("vertical")
 

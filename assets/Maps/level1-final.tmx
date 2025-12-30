@@ -37,8 +37,8 @@
   <object id="689" x="814" y="-488"/>
   <object id="690" x="814" y="-488"/>
  </objectgroup>
- <objectgroup id="6" name="player" visible="0" locked="1">
-  <object id="691" name="spawn" x="126" y="968"/>
+ <objectgroup id="6" name="player">
+  <object id="691" name="spawn" x="126" y="908"/>
  </objectgroup>
  <objectgroup id="2" name="decorations">
   <object id="443" gid="57" x="966.487" y="793.917" width="61.5317" height="254.044"/>
@@ -268,17 +268,17 @@
   <object id="682" x="1378" y="720">
    <polygon points="-12.5478,-1.9087 -10.507,106.2 534.168,101.926 530.35,-8.27388"/>
   </object>
-  <object id="684" x="156.099" y="722.083" width="407.802" height="87.8344"/>
+  <object id="684" x="156.099" y="722.083" width="407.802" height="77.8344"/>
   <object id="686" x="784" y="468" width="36" height="28"/>
-  <object id="687" x="654" y="788" width="38" height="22"/>
+  <object id="687" x="650" y="778" width="38" height="22"/>
   <object id="692" x="6" y="8" width="1900" height="220.535">
    <polygon points="0,0 1900,0 1900,220.535 1787.17,223.719 0,220.535"/>
   </object>
   <object id="693" x="6" y="1036" width="1898" height="238">
    <polygon points="0,0 1900.31,-1.38409 1898,238 0,238"/>
   </object>
-  <object id="695" x="582" y="974">
-   <polygon points="0,-2 0,54 370,52 364,-8"/>
+  <object id="695" x="618" y="974">
+   <polygon points="0,-2 0,54 334,52 328.584,-8"/>
   </object>
   <object id="700" x="774" y="910">
    <polygon points="0,-2 0,54 170,52 167.243,-8"/>
@@ -329,8 +329,8 @@
   <object id="738" x="-4" y="348" width="128" height="10"/>
   <object id="739" x="-16" y="370" width="136" height="6"/>
   <object id="740" x="-10" y="384" width="146" height="6"/>
-  <object id="741" x="580" y="986" width="350" height="10"/>
-  <object id="742" x="578" y="994" width="380" height="14"/>
+  <object id="741" x="620" y="986" width="310" height="10"/>
+  <object id="742" x="634" y="994" width="324" height="14"/>
   <object id="743" x="772" y="926" width="180" height="14"/>
   <object id="744" x="814" y="930" width="70" height="2"/>
   <object id="745" x="850" y="858" width="92" height="16"/>
