@@ -43,16 +43,41 @@ class BootScene:
     # =========================
     # TMX LOADING (ONLY OBJECT LAYERS)
     # =========================
+    # =========================
+    # TMX LOADING (ONLY OBJECT LAYERS)
+    # =========================
     def load_map(self):
-
-        self.tmx = load_pygame(
-            join(ASSETS_DIR, "Maps", "boot.tmx")
-        )
+        try:
+            self.tmx = load_pygame(
+                join(ASSETS_DIR, "Maps", "boot.tmx")
+            )
+        except Exception as e:
+            print(f"Error loading map: {e}")
+            return
 
         # ---------- PLATFORM COLLISIONS ----------
-        for obj in self.tmx.get_layer_by_name("platform"):
-            rect = pygame.FRect(obj.x, obj.y, obj.width, obj.height)
-            CollisionSprite(rect, self.collision_sprites)
+        # Robust check for layer names (platform vs platforms)
+        layer_name = "platform"
+        if "platforms" in self.tmx.layernames:
+            layer_name = "platforms"
+        elif "platform" in self.tmx.layernames:
+            layer_name = "platform"
+        else:
+             print("WARNING: No collision layer found in boot.tmx!")
+        
+        found_collisions = False
+        try:
+            for obj in self.tmx.get_layer_by_name(layer_name):
+                found_collisions = True
+                rect = pygame.FRect(obj.x, obj.y, obj.width, obj.height)
+                CollisionSprite(rect, self.collision_sprites)
+        except Exception as e:
+             print(f"Collision loading warning: {e}")
+
+        # FAILSAFE: If no collisions loaded (broken map), add a floor so player doesn't fall forever
+        if not found_collisions:
+            print("Deploying emergency floor.")
+            CollisionSprite(pygame.FRect(0, WINDOW_HEIGHT - 50, WINDOW_WIDTH, 50), self.collision_sprites)
 
         # ---------- PLAYER SPAWN ----------
         self.player = None
