@@ -4,7 +4,7 @@ import pytmx
 from settings import *
 from player import Player
 from sprite import CollisionSprite
-from ui.dialogue import DialogueBox
+from ai_ui import DialogueBox
 from fade import Fade
 # from scenes.level1_scene import Level1Scene
 
@@ -29,7 +29,7 @@ class BootScene:
         self.collision_sprites = pygame.sprite.Group()
 
         # state
-        self.dialogue = None
+        self.ui = DialogueBox()
         self.fade = Fade((WINDOW_WIDTH, WINDOW_HEIGHT))
         self.exiting = False
 
@@ -87,11 +87,6 @@ class BootScene:
     # INPUT
     # =========================
     def handle_event(self, event):
-        # dialogue eats input
-        if self.dialogue:
-            self.dialogue.handle_event(event)
-            return
-
         if event.type == pygame.KEYDOWN:
             # record first movement (any key)
             if not self.moved:
@@ -100,15 +95,20 @@ class BootScene:
                     - self.context.metrics["boot_start_time"]
                 )
                 self.moved = True
-            if event.key == pygame.K_i:
-                print("Pressed I")
-                print("Player hitbox:", self.player.hitbox)
-                print("Terminal rect:", self.terminal_rect)
+            
+            # EXIT if already interacted
+            if self.interacted and event.key == pygame.K_RETURN:
+                 self.fade.start()
+                 self.exiting = True
 
             # terminal interaction
             if event.key == pygame.K_i:
-                if self.player.rect.colliderect(self.terminal_rect):
+                # Inflate rect slightly to make it easier to hit
+                check_rect = self.terminal_rect.inflate(20, 20)
+                if self.player.hitbox.colliderect(check_rect):
                     self.start_terminal()
+                else:
+                    print(f"Missed Terminal. Player: {self.player.hitbox}, Term: {self.terminal_rect}")
 
     # =========================
     # TERMINAL SEQUENCE
@@ -126,32 +126,21 @@ class BootScene:
         if t < 4000:
             self.context.behavior["fast_learner"] = True
 
-        if self.context.behavior["fast_learner"]:
-            lines = [
-                "Input detected.",
-                "You adapt quickly.",
-                "Observation continues."
-            ]
-        else:
-            lines = [
-                "Input detected.",
-                "Adaptation achieved.",
-                "Observation continues."
-            ]
-
-        self.dialogue = DialogueBox(lines, self.font)
+        msg = ">> SYSTEM INITIALIZED <<\n\nIdentity confirmed.\nAdaptation rate: OPTIMAL.\n\n[PRESS ENTER TO BEGIN]"
+        self.ui.show_message(msg)
 
     # =========================
     # UPDATE
     # =========================
     def update(self, dt):
         self.all_sprites.update(dt)
+        self.ui.update()
 
-        if self.dialogue:
-            self.dialogue.update()
-            if not self.dialogue.visible and not self.exiting:
-                self.fade.start()
-                self.exiting = True
+        # Auto-exit if interacted and text is fully shown (simple time check or just wait for key)
+        if self.interacted and not self.exiting:
+            # Let the player read for 3 seconds then fade (or wait for key press)
+            # For now, let's just wait for a keypress in handle_event to trigger fade
+            pass
 
         if self.exiting and self.fade.update():
             from scenes.level1_scene import Level1Scene
@@ -182,12 +171,10 @@ class BootScene:
         self.all_sprites.draw(screen)
 
         # optional terminal debug
-        # pygame.draw.rect(screen, "green", self.terminal_rect, 2)
+        if self.terminal_rect:
+             pygame.draw.rect(screen, "green", self.terminal_rect, 2)
 
-
-
-        if self.dialogue:
-            self.dialogue.draw(screen)
+        self.ui.draw(screen)
 
         self.fade.draw(screen)
 
