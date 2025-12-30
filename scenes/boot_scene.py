@@ -65,24 +65,32 @@ class BootScene:
         else:
              print("WARNING: No collision layer found in boot.tmx!")
         
+        print(f"DEBUG: Loading collisions from layer '{layer_name}'")
         found_collisions = False
         try:
             for obj in self.tmx.get_layer_by_name(layer_name):
                 found_collisions = True
+                print(f"DEBUG: Found Collision Obj: x={obj.x}, y={obj.y}, w={obj.width}, h={obj.height}, name={obj.name}")
                 rect = pygame.FRect(obj.x, obj.y, obj.width, obj.height)
                 CollisionSprite(rect, self.collision_sprites)
         except Exception as e:
              print(f"Collision loading warning: {e}")
 
-        # FAILSAFE: If no collisions loaded (broken map), add a floor so player doesn't fall forever
-        if not found_collisions:
-            print("Deploying emergency floor.")
-            CollisionSprite(pygame.FRect(0, WINDOW_HEIGHT - 50, WINDOW_WIDTH, 50), self.collision_sprites)
+        # FORCE DEBUG FLOOR (Redundant safety)
+        print("DEBUG: Adding Hardcoded Safety Floor at Y=650")
+        safety_rect = pygame.FRect(0, 650, WINDOW_WIDTH, 50)
+        CollisionSprite(safety_rect, self.collision_sprites)
+        # Add a visual sprite for checking
+        safety_sprite = pygame.sprite.Sprite(self.all_sprites)
+        safety_sprite.image = pygame.Surface((WINDOW_WIDTH, 50))
+        safety_sprite.image.fill((100, 50, 50)) # Dark Red
+        safety_sprite.rect = safety_rect
 
         # ---------- PLAYER SPAWN ----------
         self.player = None
         for obj in self.tmx.get_layer_by_name("player"):
             if obj.name == "spawn":
+                print(f"DEBUG: Player Spawn found at ({obj.x}, {obj.y})")
                 self.player = Player(
                     (obj.x, obj.y),
                     self.all_sprites,
@@ -169,10 +177,13 @@ class BootScene:
         # DEBUG PRINT
         if pygame.time.get_ticks() % 100 == 0:
              print(f"DEBUG: Player Pos: {self.player.rect.topleft}, Hitbox: {self.player.hitbox.topleft}")
-             if not self.terminal_rect:
-                 print("DEBUG: Terminal Rect is NONE")
-             else:
-                 print(f"DEBUG: Terminal Rect: {self.terminal_rect}")
+             
+        # RESET IF FALLEN
+        if self.player.rect.y > 1000:
+            print("DEBUG: Player fell off world! Resetting to start.")
+            self.player.hitbox.topleft = (100, 400)
+            self.player.rect.topleft = (100, 400)
+            self.player.velocity_y = 0
 
         if self.exiting and self.fade.update():
             from scenes.level1_scene import Level1Scene
