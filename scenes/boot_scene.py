@@ -4,7 +4,7 @@ import pytmx
 from settings import *
 from player import Player
 from sprite import CollisionSprite
-from ui.dialogue import DialogueBox
+from ai_ui import DialogueBox
 from fade import Fade
 # from scenes.level1_scene import Level1Scene
 
@@ -29,7 +29,7 @@ class BootScene:
         self.collision_sprites = pygame.sprite.Group()
 
         # state
-        self.dialogue = None
+        self.ui = DialogueBox()
         self.fade = Fade((WINDOW_WIDTH, WINDOW_HEIGHT))
         self.exiting = False
 
@@ -43,21 +43,54 @@ class BootScene:
     # =========================
     # TMX LOADING (ONLY OBJECT LAYERS)
     # =========================
+    # =========================
+    # TMX LOADING (ONLY OBJECT LAYERS)
+    # =========================
     def load_map(self):
-
-        self.tmx = load_pygame(
-            join(ASSETS_DIR, "Maps", "boot.tmx")
-        )
+        try:
+            self.tmx = load_pygame(
+                join(ASSETS_DIR, "Maps", "boot.tmx")
+            )
+        except Exception as e:
+            print(f"Error loading map: {e}")
+            return
 
         # ---------- PLATFORM COLLISIONS ----------
-        for obj in self.tmx.get_layer_by_name("platform"):
-            rect = pygame.FRect(obj.x, obj.y, obj.width, obj.height)
-            CollisionSprite(rect, self.collision_sprites)
+        # Robust check for layer names (platform vs platforms)
+        layer_name = "platform"
+        if "platforms" in self.tmx.layernames:
+            layer_name = "platforms"
+        elif "platform" in self.tmx.layernames:
+            layer_name = "platform"
+        else:
+             print("WARNING: No collision layer found in boot.tmx!")
+        
+        print(f"DEBUG: Loading collisions from layer '{layer_name}'")
+        found_collisions = False
+        try:
+            for obj in self.tmx.get_layer_by_name(layer_name):
+                found_collisions = True
+                print(f"DEBUG: Found Collision Obj: x={obj.x}, y={obj.y}, w={obj.width}, h={obj.height}, name={obj.name}")
+                rect = pygame.FRect(obj.x, obj.y, obj.width, obj.height)
+                CollisionSprite(rect, self.collision_sprites)
+        except Exception as e:
+             print(f"Collision loading warning: {e}")
+
+        # FORCE DEBUG FLOOR (Redundant safety)
+        print("DEBUG: Adding Hardcoded Safety Floor at Y=650")
+        safety_rect = pygame.FRect(0, 650, WINDOW_WIDTH, 50)
+        CollisionSprite(safety_rect, self.collision_sprites)
+        # Add a visual sprite for checking
+        safety_sprite = pygame.sprite.Sprite(self.all_sprites)
+        safety_sprite.image = pygame.Surface((WINDOW_WIDTH, 50))
+        safety_sprite.image.fill((100, 50, 50)) # Dark Red
+        safety_sprite.rect = safety_rect
 
         # ---------- PLAYER SPAWN ----------
         self.player = None
         for obj in self.tmx.get_layer_by_name("player"):
             if obj.name == "spawn":
+                print(f"DEBUG: Player Spawn found at ({obj.x}, {obj.y})")
                 self.player = Player(
                     (obj.x, obj.y),
                     self.all_sprites,
@@ -87,11 +120,6 @@ class BootScene:
     # INPUT
     # =========================
     def handle_event(self, event):
-        # dialogue eats input
-        if self.dialogue:
-            self.dialogue.handle_event(event)
-            return
-
         if event.type == pygame.KEYDOWN:
             # record first movement (any key)
             if not self.moved:
@@ -100,15 +128,20 @@ class BootScene:
                     - self.context.metrics["boot_start_time"]
                 )
                 self.moved = True
-            if event.key == pygame.K_i:
-                print("Pressed I")
-                print("Player hitbox:", self.player.hitbox)
-                print("Terminal rect:", self.terminal_rect)
+            
+            # EXIT if already interacted
+            if self.interacted and event.key == pygame.K_RETURN:
+                 self.fade.start()
+                 self.exiting = True
 
             # terminal interaction
             if event.key == pygame.K_i:
-                if self.player.rect.colliderect(self.terminal_rect):
+                # Inflate rect slightly to make it easier to hit
+                check_rect = self.terminal_rect.inflate(20, 20)
+                if self.player.hitbox.colliderect(check_rect):
                     self.start_terminal()
+                else:
+                    print(f"Missed Terminal. Player: {self.player.hitbox}, Term: {self.terminal_rect}")
 
     # =========================
     # TERMINAL SEQUENCE
@@ -126,32 +159,31 @@ class BootScene:
         if t < 4000:
             self.context.behavior["fast_learner"] = True
 
-        if self.context.behavior["fast_learner"]:
-            lines = [
-                "Input detected.",
-                "You adapt quickly.",
-                "Observation continues."
-            ]
-        else:
-            lines = [
-                "Input detected.",
-                "Adaptation achieved.",
-                "Observation continues."
-            ]
-
-        self.dialogue = DialogueBox(lines, self.font)
+        msg = ">> SYSTEM INITIALIZED <<\n\nIdentity confirmed.\nAdaptation rate: OPTIMAL.\n\n[PRESS ENTER TO BEGIN]"
+        self.ui.show_message(msg)
 
     # =========================
     # UPDATE
     # =========================
     def update(self, dt):
         self.all_sprites.update(dt)
+        self.ui.update()
 
-        if self.dialogue:
-            self.dialogue.update()
-            if not self.dialogue.visible and not self.exiting:
-                self.fade.start()
-                self.exiting = True
+        # Auto-exit if interacted and text is fully shown (simple time check or just wait for key)
+        if self.interacted and not self.exiting:
+            # Let the player read for 3 seconds then fade (or wait for key press)
+            pass
+            
+        # DEBUG PRINT
+        if pygame.time.get_ticks() % 100 == 0:
+             print(f"DEBUG: Player Pos: {self.player.rect.topleft}, Hitbox: {self.player.hitbox.topleft}")
+             
+        # RESET IF FALLEN
+        if self.player.rect.y > 1000:
+            print("DEBUG: Player fell off world! Resetting to start.")
+            self.player.hitbox.topleft = (100, 400)
+            self.player.rect.topleft = (100, 400)
+            self.player.velocity_y = 0
 
         if self.exiting and self.fade.update():
             from scenes.level1_scene import Level1Scene
@@ -182,12 +214,16 @@ class BootScene:
         self.all_sprites.draw(screen)
 
         # optional terminal debug
-        # pygame.draw.rect(screen, "green", self.terminal_rect, 2)
+        if self.terminal_rect:
+             pygame.draw.rect(screen, "green", self.terminal_rect, 2)
 
+        self.ui.draw(screen)
 
-
-        if self.dialogue:
-            self.dialogue.draw(screen)
+        # FORCE DEBUG DRAW
+        if self.player:
+            pygame.draw.rect(screen, "red", self.player.rect, 2)
+        if self.terminal_rect:
+            pygame.draw.rect(screen, "green", self.terminal_rect, 2)
 
         self.fade.draw(screen)
 
